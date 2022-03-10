@@ -3,6 +3,7 @@ import re
 import nltk
 import numpy as np
 from sklearn import feature_extraction
+from sklearn.feature_extraction.text import TfidfVectorizer
 from tqdm import tqdm
 
 
@@ -36,6 +37,21 @@ def gen_or_load_feats(feat_fn, headlines, bodies, feature_file):
     return np.load(feature_file)
 
 
+def cosine_features(headlines, bodies):
+
+    vectorizer = TfidfVectorizer(ngram_range=(1, 3), lowercase=True, stop_words='english')
+
+    cos_sim_features = []
+    for i in range(0, len(bodies)):
+        body_vs_headline = []
+        body_vs_headline.append(bodies[i])
+        body_vs_headline.append(headlines[i])
+        tfidf = vectorizer.fit_transform(body_vs_headline)
+
+        cosine_similarity = (tfidf * tfidf.T).A
+        cos_sim_features.append(cosine_similarity[0][1])
+
+    return cos_sim_features
 
 
 def word_overlap_features(headlines, bodies):

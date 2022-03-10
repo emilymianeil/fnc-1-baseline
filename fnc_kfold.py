@@ -3,7 +3,7 @@ import numpy as np
 
 from sklearn.ensemble import GradientBoostingClassifier
 from feature_engineering import refuting_features, polarity_features, hand_features, gen_or_load_feats
-from feature_engineering import word_overlap_features
+from feature_engineering import word_overlap_features, cosine_features
 from utils.dataset import DataSet
 from utils.generate_test_splits import kfold_split, get_stances_for_folds
 from utils.score import report_score, LABELS, score_submission
@@ -23,8 +23,9 @@ def generate_features(stances,dataset,name):
     X_refuting = gen_or_load_feats(refuting_features, h, b, "features/refuting."+name+".npy")
     X_polarity = gen_or_load_feats(polarity_features, h, b, "features/polarity."+name+".npy")
     X_hand = gen_or_load_feats(hand_features, h, b, "features/hand."+name+".npy")
+    X_cosine = gen_or_load_feats(hand_features, h, b, "features/cosine."+name+".npy")
 
-    X = np.c_[X_hand, X_polarity, X_refuting, X_overlap]
+    X = np.c_[X_hand, X_polarity, X_refuting, X_overlap, X_cosine]
     return X,y
 
 if __name__ == "__main__":
@@ -33,7 +34,7 @@ if __name__ == "__main__":
 
     #Load the training dataset and generate folds
     d = DataSet()
-    folds,hold_out = kfold_split(d,n_folds=10)
+    folds,hold_out = kfold_split(d,n_folds=15)
     fold_stances, hold_out_stances = get_stances_for_folds(d,folds,hold_out)
 
     # Load the competition dataset
@@ -64,7 +65,7 @@ if __name__ == "__main__":
         X_test = Xs[fold]
         y_test = ys[fold]
 
-        clf = GradientBoostingClassifier(n_estimators=200, random_state=14128, verbose=True)
+        clf = GradientBoostingClassifier(n_estimators=75, random_state=700, verbose=True)
         clf.fit(X_train, y_train)
 
         predicted = [LABELS[int(a)] for a in clf.predict(X_test)]
