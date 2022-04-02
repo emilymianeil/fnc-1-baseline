@@ -1,4 +1,5 @@
 import sys
+from this import s
 import numpy as np
 
 from sklearn.ensemble import GradientBoostingClassifier
@@ -9,6 +10,8 @@ from utils.generate_test_splits import kfold_split, get_stances_for_folds
 from utils.score import report_score, LABELS, score_submission
 
 from utils.system import parse_params, check_version
+from csv import DictReader
+import pandas
 
 
 def generate_features(stances,dataset,name):
@@ -39,6 +42,13 @@ if __name__ == "__main__":
     # Load the competition dataset
     competition_dataset = DataSet("competition_test")
     X_competition, y_competition = generate_features(competition_dataset.stances, competition_dataset, "competition")
+
+    h, b = [], []
+    for stance in competition_dataset.stances:
+        h.append(stance['Headline'])
+        b.append(stance['Body ID'])
+
+    answers = {'Headline': h, 'Body ID': b, 'Stance': []}
 
     Xs = dict()
     ys = dict()
@@ -88,12 +98,12 @@ if __name__ == "__main__":
 
     print("Scores on the dev set")
     report_score(actual,predicted)
-    print("")
-    print("")
 
     #Run on competition dataset
     predicted = [LABELS[int(a)] for a in best_fold.predict(X_competition)]
+    answers["Stance"] = predicted
+    answers = pandas.DataFrame(answers)
+    answers.to_csv('answer.csv', index=False, encoding='utf-8')
     actual = [LABELS[int(a)] for a in y_competition]
-
     print("Scores on the test set")
     report_score(actual,predicted)
