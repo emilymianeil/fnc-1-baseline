@@ -9,6 +9,7 @@ from feature_engineering import word_overlap_features, cosine_features
 from sklearn.model_selection import train_test_split
 from tensorflow.keras.preprocessing.text import text_to_word_sequence
 import tensorflow as tf
+from nltk import tokenize
 from keras.models import Model, Sequential
 from keras.layers import Input, LSTM, Embedding, Dense, Dropout, Activation, Lambda
 from tensorflow.keras.preprocessing.text import text_to_word_sequence
@@ -27,7 +28,7 @@ hyperparam = {
     'max_vocab_size': 20000,
     'max_length': 70,
     'embedding_dim': 100,
-    'dropout_rate': 0.1,
+    'dropout_rate': 0.3,
     'learning_rate': 0.1,
     'n_epochs': 10,
 }
@@ -100,10 +101,13 @@ if __name__ == "__main__":
     print("   \nVectorizing data ...")
     articles = d.articles.values()
     sz = len(articles)
+    sentences = []
+    for article in articles:
+        sentences += tokenize.sent_tokenize(article)
     tokens = []
-    for idx, article in enumerate(articles):
-        print_progress(idx, sz, "")
-        words = word_tokenize(article)
+    for idx, sent in enumerate(sentences):
+        #print_progress(idx, sz, "")
+        words = word_tokenize(sent)
         tokens.append(words)
     print("\n")
     w2v = Word2Vec(sentences=tokens, vector_size=100, window=5, min_count=1, workers=4)
@@ -112,10 +116,10 @@ if __name__ == "__main__":
     best_fold = None
 
     # build tokenizer
-    word_seq = [text_to_word_sequence(sent) for sent in articles]
+    word_seq = [text_to_word_sequence(sent) for sent in sentences]
     tokenizer = tf.keras.preprocessing.text.Tokenizer(num_words=hyperparam['max_vocab_size'])
     tokenizer.fit_on_texts([' '.join(seq[:hyperparam['max_length']]) for seq in word_seq])
-    word_seq = [text_to_word_sequence(sent) for sent in articles]
+    word_seq = [text_to_word_sequence(sent) for sent in sentences]
 
     # build embedding matrix
     vocab_size = len(tokenizer.word_index.items()) + 1
@@ -137,16 +141,17 @@ if __name__ == "__main__":
                   trainable=False)
     model = Sequential()
     model.add(e)
-    model.add(Activation(activation='tanh', name='hidden_layer'))
-    # use hard-coded dropout rate
-    model.add(Dropout(hyperparam['dropout_rate']))
-    # L2 norm regularization
-    model.add(Lambda(lambda x: tf.math.l2_normalize(x, axis=1)))
-    model.add(LSTM(128, return_sequences=False, name='lstm_layer'))
-    model.add(Dense(1, activation='softmax', name='output_layer'))
-    model.compile(loss='binary_crossentropy',
-                  optimizer='adam',
-                  metrics=['accuracy'])
+
+    model.add(LSTM(128, return_sequences=False))
+
+    model.add(Dense(32))
+    model.add(Dropout(rate=0.1))
+    model.add(Activation(activation='tanh'))
+
+    model.add(Dense(1, kernel_regularizer='l2'))
+    model.add(Dense(4,activation='softmax'))
+
+    model.compile(loss='sparse_categorical_crossentropy', optimizer='adam', metrics=["accuracy"])
 
 
 
@@ -164,14 +169,19 @@ if __name__ == "__main__":
         y_train = np.asarray(y_train)
         y_test = np.asarray(y_test)
 
+        X_val = X_test[:(len(X_test) // 2)]
+        y_val = y_test[:(len(X_test) // 2)]
+        x_test = X_test[(len(X_test) // 2):]
+        y_test = y_test[(len(X_test) // 2):]
+
         # train model
         model.fit(X_train, y_train,
                   batch_size=hyperparam['batch_size'],
-                  epochs=hyperparam['n_epochs'],
-                  validation_data=(X_test, y_test),
+                  epochs=1,
+                  validation_data=(X_val, y_val),
                   verbose=1)
 
-        predicted = [LABELS[int(a)] for a in model.predict(X_test)]
+        predicted = [LABELS[np.argmax(a, axis = 0)] for a in model.predict(X_test)]
         actual = [LABELS[int(a)] for a in y_test]
 
         fold_score, _ = score_submission(actual, predicted)
@@ -185,7 +195,7 @@ if __name__ == "__main__":
             best_fold = model
 
     # Run on Holdout set and report the final score on the holdout set
-    predicted = [LABELS[int(a)] for a in best_fold.predict(X_holdout)]
+    predicted = [LABELS[np.argmax(a, axis = 0)] for a in best_fold.predict(X_holdout)]
     actual = [LABELS[int(a)] for a in y_holdout]
 
     print("Scores on the dev set")
@@ -194,7 +204,7 @@ if __name__ == "__main__":
     print("")
 
     # Run on competition dataset
-    predicted = [LABELS[int(a)] for a in best_fold.predict(X_competition)]
+    predicted = [LABELS[np.argmax(a, axis = 0)] for a in best_fold.predict(X_competition)]
     actual = [LABELS[int(a)] for a in y_competition]
 
     print("Scores on the test set")
