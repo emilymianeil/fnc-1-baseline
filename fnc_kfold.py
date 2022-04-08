@@ -3,7 +3,7 @@ from this import s
 import numpy as np
 
 from sklearn.ensemble import GradientBoostingClassifier
-from feature_engineering import refuting_features, polarity_features, hand_features, gen_or_load_feats
+from feature_engineering import refuting_features, sentiment_intensity_features, cosine_features, polarity_features, hand_features, gen_or_load_feats
 from feature_engineering import word_overlap_features
 from utils.dataset import DataSet
 from utils.generate_test_splits import kfold_split, get_stances_for_folds
@@ -26,8 +26,10 @@ def generate_features(stances,dataset,name):
     X_refuting = gen_or_load_feats(refuting_features, h, b, "features/refuting."+name+".npy")
     X_polarity = gen_or_load_feats(polarity_features, h, b, "features/polarity."+name+".npy")
     X_hand = gen_or_load_feats(hand_features, h, b, "features/hand."+name+".npy")
+    X_cosine = gen_or_load_feats(cosine_features, h, b, "features/cosine."+name+".npy")
+    X_sent = gen_or_load_feats(sentiment_intensity_features, h, b, "features/sent."+name+".npy")
 
-    X = np.c_[X_hand, X_polarity, X_refuting, X_overlap]
+    X = np.c_[X_hand, X_polarity, X_refuting, X_overlap, X_cosine, X_sent]
     return X,y
 
 if __name__ == "__main__":
@@ -64,7 +66,11 @@ if __name__ == "__main__":
 
 
     # Classifier for each fold
+    t = 0
     for fold in fold_stances:
+        if t > 0:
+            break
+        t = 1
         ids = list(range(len(folds)))
         del ids[fold]
 
@@ -74,7 +80,7 @@ if __name__ == "__main__":
         X_test = Xs[fold]
         y_test = ys[fold]
 
-        clf = GradientBoostingClassifier(n_estimators=200, random_state=14128, verbose=True)
+        clf = GradientBoostingClassifier(n_estimators=200, learning_rate=0.2, random_state=14128, verbose=True)
         clf.fit(X_train, y_train)
 
         predicted = [LABELS[int(a)] for a in clf.predict(X_test)]

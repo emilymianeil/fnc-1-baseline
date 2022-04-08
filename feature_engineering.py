@@ -3,6 +3,10 @@ import re
 import nltk
 import numpy as np
 from sklearn import feature_extraction
+import vaderSentiment
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+import scipy
+from sklearn.feature_extraction.text import TfidfVectorizer
 from tqdm import tqdm
 
 
@@ -33,9 +37,24 @@ def gen_or_load_feats(feat_fn, headlines, bodies, feature_file):
         feats = feat_fn(headlines, bodies)
         np.save(feature_file, feats)
 
-    return np.load(feature_file)
+    return np.load(feature_file, allow_pickle=True)
 
 
+def cosine_features(headlines, bodies):
+
+    vectorizer = TfidfVectorizer(ngram_range=(1, 3), lowercase=True, stop_words='english')
+
+    cos_sim_features = []
+    for i in range(0, len(bodies)):
+        body_vs_headline = []
+        body_vs_headline.append(bodies[i])
+        body_vs_headline.append(headlines[i])
+        tfidf = vectorizer.fit_transform(body_vs_headline)
+
+        cosine_similarity = (tfidf * tfidf.T).A
+        cos_sim_features.append(cosine_similarity[0][1])
+    print(len(cos_sim_features))
+    return cos_sim_features
 
 
 def word_overlap_features(headlines, bodies):
@@ -206,4 +225,35 @@ def hand_features(headlines, bodies):
                  + count_grams(headline, body))
 
 
+    return X
+
+
+def sentiment_intensity_features(headlines, bodies):
+    sid_obj = SentimentIntensityAnalyzer()
+    X = []
+    headline_sentiment = ""
+    body_sentiment = ""
+    for i, (headline, body) in tqdm(enumerate(zip(headlines, bodies))):
+        clean_headline = clean(headline)
+        clean_body = clean(body)
+        headline_sent = sid_obj.polarity_scores(clean_headline)
+        if headline_sent['compound'] >= 0.05:
+            headline_sentiment = "pos"
+        elif headline_sent['compound'] <= - 0.05:
+            headline_sentiment = "neg"
+        else:
+            headline_sentiment = "neu"
+
+        body_sent = sid_obj.polarity_scores(clean_body)
+        if body_sent['compound'] >= 0.05:
+            body_sentiment = "pos"
+        elif body_sent['compound'] <= - 0.05:
+            body_sentiment = "neg"
+        else:
+            body_sentiment = "neu"
+
+        if body_sentiment == headline_sentiment:
+            X.append(1)
+        else:
+            X.append(0)
     return X
