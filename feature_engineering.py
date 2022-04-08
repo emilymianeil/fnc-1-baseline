@@ -3,6 +3,7 @@ import re
 import nltk
 import numpy as np
 from sklearn import feature_extraction
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from tqdm import tqdm
 
 
