@@ -164,10 +164,6 @@ if __name__ == "__main__":
                   trainable=False)
     modelRel = Sequential()
     modelRel.add(e)
-    # model.add(LSTM(128, return_sequences=False))
-    # model.add(Dense(32))
-    # model.add(Dropout(rate=0.1))
-
     modelRel.add(Bidirectional(LSTM(128, dropout=0.5)))
     modelRel.add(Activation(activation='relu'))
     modelRel.add(Dense(1, kernel_regularizer='l2'))
@@ -175,10 +171,7 @@ if __name__ == "__main__":
 
     modelRel.compile(loss='sparse_categorical_crossentropy', optimizer='adam', metrics=["accuracy"])
 
-    #class_weights = {0: 1, 1: 5, 2: 1, 3: 1}
-    #weights = {0: 4500, 1: 500, 2: 9000, 3: 36000}
-    #class_weights = create_class_weight(weights)
-    print(class_weights)
+    class_weights = {0: 1, 1: 5, 2: 1, 3: 1}
 
 
     # Classifier for each fold
@@ -201,7 +194,7 @@ if __name__ == "__main__":
         y_test = y_test[(len(X_test) // 2):]
 
         # train model
-        modelRel.fit(X_train, y_train,  #class_weight=class_weights,
+        modelRel.fit(X_train, y_train,  class_weight=class_weights,
                      batch_size=hyperparam['batch_size'],
                      epochs=10,
                      validation_data=(X_val, y_val),
