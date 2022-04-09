@@ -252,8 +252,23 @@ def sentiment_intensity_features(headlines, bodies):
         else:
             body_sentiment = "neu"
 
-        if body_sentiment == headline_sentiment:
-            X.append(1)
-        else:
+        if body_sentiment == "pos" and headline_sentiment == "pos":
             X.append(0)
+        elif body_sentiment == "pos" and headline_sentiment == "neg":
+            X.append(1)
+        elif body_sentiment == "pos" and headline_sentiment == "neu":
+            X.append(2)
+        elif body_sentiment == "neg" and headline_sentiment == "pos":
+            X.append(3)
+        elif body_sentiment == "neg" and headline_sentiment == "neg":
+            X.append(4)
+        elif body_sentiment == "neg" and headline_sentiment == "neu":
+            X.append(5)
+        elif body_sentiment == "neu" and headline_sentiment == "pos":
+            X.append(6)
+        elif body_sentiment == "neu" and headline_sentiment == "neg":
+            X.append(7)
+        elif body_sentiment == "neu" and headline_sentiment == "neu":
+            X.append(8)
+
     return X
